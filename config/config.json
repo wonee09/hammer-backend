@@ -1,0 +1,29 @@
+{
+  "development": {
+    "username": "root",
+    "password": "jackpot123!",
+    "database": "foot-hammer",
+    "host": "jackpot.cvafr47jak0b.ap-northeast-2.rds.amazonaws.com",
+    "dialect": "mysql",
+    "timezone": "Asia/Seoul",
+    "dialectOptions": {
+      "charset": "utf8mb4",
+      "dateStrings": true,
+      "typeCast": true
+    }
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "database_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": null,
+    "database": "database_production",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}

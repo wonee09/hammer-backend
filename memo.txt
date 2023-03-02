@@ -1,0 +1,40 @@
+npx sequelize model:generate
+--name Posts
+--attributes title:string,content:string,password:string
+
+npx sequelize model:generate
+--name Users
+--attributes email:string,password:string,email_verification_date:date
+
+npx sequelize model:generate --name Agreements --attributes title:string,contents:string,version:number
+
+npx sequelize model:generate --name User_agreement_history --attributes user_id:number,agreement_id:number,sequence:number,is_agreed:boolean
+
+npx sequelize model:generate --name Posts --attributes title:string,contents:string,writer_id:number,likes:number,hits:number,address_id:number,deleted_yn:boolean,deleted_at:date
+
+
+npx sequelize model:generate --name Comments --attributes post_id:number,writer_id:number,contents:string
+
+
+npx sequelize model:generate --name Address --attributes x_loc:string,y_loc:string,total_road_address:string,zone_no:string,building_name:string,road_name:string,main_building_no:string,sub_building_no:string,underground_yn:string
+
+
+npx sequelize model:generate
+--name Posts
+--attributes title:string,content:string,password:string
+
+
+npx sequelize model:generate
+--name Posts
+--attributes title:string,content:string,password:string
+
+
+npx sequelize model:generate
+--name Posts
+--attributes title:string,content:string,password:string
+
+
+npx sequelize model:generate
+--name Posts
+--attributes title:string,content:string,password:string
+
