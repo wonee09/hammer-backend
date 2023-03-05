@@ -15,11 +15,13 @@ module.exports = async (req, res, next) => {
     //     .json({ message: '토큰 타입이 일치하지 않습니다.' });
     // }
 
-    const decodedToken = jwt.verify(accessToken, 'TEST_SECRET_KEY');
-    console.log('decodedToken', decodedToken);
-    const id = decodedToken.id;
+    // disabled for testing below
+    // const decodedToken = jwt.verify(accessToken, 'TEST_SECRET_KEY');
+    // console.log('decodedToken', decodedToken);
+    // const id = decodedToken.id;
 
-    const user = await Users.findOne({ where: { id } });
+    // const user = await Users.findOne({ where: { id } });
+    const user = await Users.findOne({ where: { id: 1 } });
     if (!user) {
       res.clearCookie('accessToken');
       res.clearCookie('refreshToken');
@@ -28,10 +30,9 @@ module.exports = async (req, res, next) => {
         .json({ message: '토큰 사용자가 존재하지 않습니다.' });
     }
 
-    // console.log('토큰 사용자가 존재해요!');
+    console.log('토큰 사용자가 존재해요!');
     res.locals.user = user;
-
-    // console.log('user 정보 => ', user);
+    console.log('user 정보 => ', user);
 
     next();
   } catch (error) {
