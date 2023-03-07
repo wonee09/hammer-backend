@@ -30,9 +30,9 @@ module.exports = async (req, res, next) => {
         .json({ message: '토큰 사용자가 존재하지 않습니다.' });
     }
 
-    console.log('토큰 사용자가 존재해요!');
+    // console.log('토큰 사용자가 존재해요!');
     res.locals.user = user;
-    console.log('user 정보 => ', user);
+    // console.log('user 정보 => ', user);
 
     next();
   } catch (error) {
