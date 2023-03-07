@@ -1,25 +1,29 @@
 const express = require('express');
 const { Op } = require('sequelize');
-const { Posts, Address, Comments } = require('../models');
+const { Posts, Comments, Likes } = require('../models');
 const authMiddleware = require('../middlewares/auth-middleware');
 const router = express.Router();
 
-// 게시글 목록 조회
+/**
+ * name : 게시글 목록 전체를 조회
+ * description : 검색어가 있는 경우 like 검색을 실시하여 검색결과만 조회한다.
+ * writer : Jay Choi
+ * date : 2023.03.07
+ */
 router.get('/posts', authMiddleware, async (req, res) => {
-  console.log('TESTING ==> ', req.url);
+  const { id: userId } = res.locals.user;
 
-  // query params를 두개로 나누기
+  // query params를 두개로 분리
   const partials = req.url.split('?')[1].split('&');
 
-  // 각각의 parameter로 분리
+  // 각각의 parameter(주소ID, 검색어)로 분리
   const idParam = partials[0].split('=')[1];
   const encodedSearchParam = partials[1].split('=')[1];
 
+  // 검색어
   const searchParam = decodeURIComponent(encodedSearchParam);
 
-  console.log('id param => ', idParam);
-  console.log('디코디드 => ', searchParam);
-
+  // 게시물 리스트
   const posts = await Posts.findAll({
     where: searchParam
       ? { addressId: idParam, title: { [Op.like]: `%${searchParam}%` } }
@@ -27,94 +31,53 @@ router.get('/posts', authMiddleware, async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
 
-  const response = posts.map((post) => {
-    return { ...post.dataValues, writerName: res.locals.user.nickName };
+  // Comments Count 구하기
+  const postsCommentCountList = await Promise.all(
+    posts.map((post) => {
+      return Comments.findAll({
+        where: { postId: post.id },
+      });
+    })
+  );
+  const resultList = postsCommentCountList.map((item) => {
+    return item.length;
+  });
+
+  // 접속한 user, postid에 해당하는 좋아요
+  const likeList = await Promise.all(
+    posts.map((post) => {
+      return Likes.findOne({
+        where: { postId: post.id, userId },
+      });
+    })
+  );
+
+  // 응답 조합
+  const response = posts.map((post, index) => {
+    return {
+      ...post.dataValues,
+      writerName: res.locals.user.nickName,
+      replyCount: resultList[index],
+      realLikeYn: likeList[index]?.dataValues.likeYn,
+    };
   });
 
   return res.status(200).json({ data: response });
 });
 
-// 댓글 조회
-router.get('/comments/:postId', authMiddleware, async (req, res) => {
-  const { postId } = req.params;
-
-  const post = await Posts.findOne({ whrer: { id: postId } });
-  if (!post) {
-    res.status(404).json({ message: '게시물이 존재하지 않습니다.' });
-  }
-
-  const comments = await Comments.findAll({
-    where: { postId },
-    order: [['createdAt', 'DESC']],
-  });
-  console.log('댓글 결과물 ====> ', comments);
-
-  return res.status(200).json({ data: comments });
-});
-
-// 주소정보 입력(주소검색 후, 선택할 때)
-// 이미 존재하는 정보이면 id만 return, 존재하지 않는 정보이면 create 후 id return
-router.post('/address', authMiddleware, async (req, res) => {
-  console.log('주소 입력 server로 들어왔습니다.');
-
-  // 위치정보 관련 정보
-  const {
-    zoneNo,
-    totalRoadAddress,
-    roadName,
-    buildingName,
-    mainBuildingNo,
-    subBuildingNo,
-    undergroundYn,
-    xLoc,
-    yLoc,
-  } = req.body;
-
-  // 입력하기 전, zoneNo와 totalRoadAddress가 일치하는 것이 있으면 pass, 없으면 새로 insert
-  const registeredAddress = await Address.findOne({
-    // attributes: ['id'],
-    where: { zoneNo, totalRoadAddress },
-  });
-
-  console.log('등록된 주소 여부! => ', registeredAddress);
-
-  if (registeredAddress) {
-    console.log('이미 등록된 주소이므로, 등록된 주소 객체를 반환합니다.');
-    return res.status(201).json({ data: registeredAddress });
-  } else {
-    // 입력 값
-    //
-    const address = await Address.create({
-      zoneNo,
-      totalRoadAddress,
-      roadName,
-      buildingName,
-      mainBuildingNo,
-      subBuildingNo,
-      undergroundYn,
-      xLoc,
-      yLoc,
-    });
-    return res.status(201).json({ data: address });
-  }
-});
-
-// 주소별 글 목록 조회
+/**
+ * name : 주소별 글 목록 조회
+ * description : 주소 1개당 등록되어 있는 post 목록을 조회한다.
+ * writer : Jay Choi
+ * date : 2023.03.07
+ */
 router.get('/posts/:addressId', authMiddleware, async (req, res) => {
-  console.log('req', req.body);
-  console.log('req', req.params);
-  console.log('req', req.cookies);
-
   const { addressId, searchValue } = req.params;
-  console.log('searchValue', searchValue);
-  console.log('addressId', addressId);
   const posts = await Posts.findAll({
     where: { addressId },
     order: [['createdAt', 'DESC']],
   });
 
-  // console.log('posts ==> ', posts);
-
   const response = posts.map((post) => {
     return { ...post.dataValues, writerName: res.locals.user.nickName };
   });
@@ -122,22 +85,9 @@ router.get('/posts/:addressId', authMiddleware, async (req, res) => {
   return res.status(200).json({ data: response });
 });
 
-// 게시글 상세 조회
-// router.get('/posts/:postId', async (req, res) => {
-//   const { postId } = req.params;
-//   const post = await Posts.findOne({
-//     attributes: ['postId', 'title', 'content', 'createdAt', 'updatedAt'],
-//     where: { postId },
-//   });
-
-//   return res.status(200).json({ data: post });
-// });
-
 // 게시글 생성
 router.post('/posts', authMiddleware, async (req, res) => {
-  // console.log('111111111', res.locals.user);
   const { id: userId } = res.locals.user;
-
   // 게시글 관련 정보
   const { title, contents, addressId } = req.body;
 
@@ -150,10 +100,22 @@ router.post('/posts', authMiddleware, async (req, res) => {
     hits: 0,
   });
 
+  // 좋아요 테이블에 default로 생성
+  await Likes.create({
+    likeYn: false,
+    postId: post.id,
+    userId,
+  });
+
   return res.status(201).json({ data: post });
 });
 
-// 게시글 수정
+/**
+ * name : 게시글 수정
+ * description : post를 수정한다.
+ * writer : Jay Choi
+ * date : 2023.03.07
+ */
 router.patch('/posts/:id', authMiddleware, async (req, res) => {
   const { id: postId } = req.params;
   const { title, contents } = req.body;
@@ -176,15 +138,6 @@ router.patch('/posts/:id', authMiddleware, async (req, res) => {
       .json({ message: '해당 post를 수정할 권한이 없는 user입니다.' });
   }
 
-  // await Posts.update(
-  //   { title, content }, // title과 content 컬럼을 수정합니다.
-  //   {
-  //     where: {
-  //       [Op.and]: [{ postId }, { UserId: userId }],
-  //     },
-  //   }
-  // );
-
   await Posts.update(
     { title, contents },
     {
@@ -195,10 +148,46 @@ router.patch('/posts/:id', authMiddleware, async (req, res) => {
   );
 
   return res.status(200).json({ data: '수정되었습니다.' });
-
-  // 수정 처리
 });
 
+/**
+ * name : 조회수 증가
+ * description : 열람할 시 조회수를 +1 처리
+ * writer : Jay Choi
+ * date : 2023.03.07
+ */
+router.patch('/posts/hits/:id', async (req, res) => {
+  const { id: postId } = req.params;
+
+  // post get
+  const post = await Posts.findOne({
+    where: {
+      id: postId,
+    },
+  });
+
+  if (!post) {
+    return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+  }
+
+  await Posts.update(
+    { hits: ++post.hits },
+    {
+      where: {
+        id: postId,
+      },
+    }
+  );
+
+  return res.status(200).json({ data: '조회수가 반영되었습니다.' });
+});
+
+/**
+ * name : 게시글 삭제
+ * description : 삭제 처리
+ * writer : Jay Choi
+ * date : 2023.03.07
+ */
 router.delete('/posts/:postId', authMiddleware, async (req, res) => {
   const { postId } = req.params;
   const { id: userId } = res.locals.user;
@@ -221,81 +210,5 @@ router.delete('/posts/:postId', authMiddleware, async (req, res) => {
 
   return res.status(200).json({ data: '게시글이 삭제되었습니다.' });
 });
-
-// 댓글 등록
-router.post('/comment', authMiddleware, async (req, res) => {
-  const userId = res.locals.user.id;
-
-  const { postId, comment } = req.body;
-  console.log('postId', postId);
-  console.log('comment', comment);
-
-  // 포스트를 조회함
-  const post = await Posts.findOne({ where: { id: postId } });
-
-  if (!post) {
-    return res.status(404).json({ message: '게시글이 존재하지 않습니다.' });
-  }
-
-  const resComment = await Comments.create({
-    postId,
-    writerId: userId,
-    contents: comment,
-  });
-
-  return res.status(201).json({ data: resComment });
-});
-
-// 게시글 수정
-// router.put('/posts/:postId', authMiddleware, async (req, res) => {
-//   const { postId } = req.params;
-//   const { userId } = res.locals.user;
-//   const { title, content } = req.body;
-
-//   // 게시글을 조회합니다.
-//   const post = await Posts.findOne({ where: { postId } });
-
-//   if (!post) {
-//     return res.status(404).json({ message: '게시글이 존재하지 않습니다.' });
-//   } else if (post.UserId !== userId) {
-//     return res.status(401).json({ message: '권한이 없습니다.' });
-//   }
-
-//   // 게시글의 권한을 확인하고, 게시글을 수정합니다.
-//   await Posts.update(
-//     { title, content }, // title과 content 컬럼을 수정합니다.
-//     {
-//       where: {
-//         [Op.and]: [{ postId }, { UserId: userId }],
-//       },
-//     }
-//   );
-
-//   return res.status(200).json({ data: '게시글이 수정되었습니다.' });
-// });
-
-// 게시글 삭제
-// router.delete('/posts/:postId', authMiddleware, async (req, res) => {
-//   const { postId } = req.params;
-//   const { userId } = res.locals.user;
-
-//   // 게시글을 조회합니다.
-//   const post = await Posts.findOne({ where: { postId } });
-
-//   if (!post) {
-//     return res.status(404).json({ message: '게시글이 존재하지 않습니다.' });
-//   } else if (post.UserId !== userId) {
-//     return res.status(401).json({ message: '권한이 없습니다.' });
-//   }
-
-//   // 게시글의 권한을 확인하고, 게시글을 삭제합니다.
-//   await Posts.destroy({
-//     where: {
-//       [Op.and]: [{ postId }, { UserId: userId }],
-//     },
-//   });
-
-//   return res.status(200).json({ data: '게시글이 삭제되었습니다.' });
-// });
 
 module.exports = router;

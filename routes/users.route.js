@@ -114,7 +114,9 @@ router.post('/login', async (req, res) => {
   // res.cookie('accessToken', `Bearer ${accessToken}`);
   res.cookie('accessToken', accessToken);
   res.cookie('refreshToken', refreshToken);
-  return res.status(200).json({ message: '로그인 성공' });
+
+  // user의 id를 전달하여, 클라이언트에서는 user의 정보를 전역(recoil)으로 저장할 수 있도록 함
+  return res.status(200).json({ data: user });
 });
 
 // 유효성 검증(프론트엔드에서 라우팅 시 토큰의 유효성 검증 시 사용)
@@ -231,8 +233,6 @@ router.get('/users/:userId', async (req, res) => {
 //   });
 // });
 
-module.exports = router;
-
 /** functions */
 // generate access token
 function createAccessToken(id) {
@@ -287,3 +287,5 @@ function getAccessTokenPayload(accessToken) {
     return null;
   }
 }
+
+module.exports = router;
