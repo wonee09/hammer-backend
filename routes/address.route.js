@@ -1,5 +1,5 @@
 const express = require('express');
-const { Address } = require('../models');
+const { Address, Posts, Sequelize } = require('../models');
 const authMiddleware = require('../middlewares/auth-middleware');
 const router = express.Router();
 
@@ -47,6 +47,34 @@ router.post('/address', authMiddleware, async (req, res) => {
     });
     return res.status(201).json({ data: address });
   }
+});
+
+router.get('/buildings', async (req, res) => {
+  // 모든 데이터 조회
+  // addressId와 count를 각각 출력
+  const buildings = await Posts.count({
+    attributes: ['addressId'],
+    distinct: true,
+    group: 'addressId',
+  });
+
+  // xLoc와 yLoc를 각각 붙이기
+  const coordinates = await Promise.all(
+    buildings.map((item) => {
+      return Address.findOne({
+        where: { id: item.addressId },
+      });
+    })
+  );
+
+  console.log('coordinates', coordinates);
+
+  // 결과 조합
+  const data = buildings.map((item, index) => {
+    return { ...item, ...coordinates[index]?.dataValues };
+  });
+
+  return res.status(200).json({ data: { data } });
 });
 
 module.exports = router;
