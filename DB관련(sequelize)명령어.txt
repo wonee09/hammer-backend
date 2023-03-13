@@ -1,0 +1,48 @@
+1. 데이터베이스 생성하기
+# config/config.json 내부의 database에 설정된 이름으로 DB 생성
+npx sequelize db:create
+
+1-1. 테이블 생성
+#1. generate
+npx sequelize model:generate --name Posts --attributes title:string,content:string,password:string
+# Notice
+npx sequelize model:generate --name Notice --attributes title:string,contents:string,writerId:number,deletedYn:boolean,deletedAt:date
+
+#2. migrate
+npx sequelize db:migrate
+
+#3. migration 파일 내 입맛대로 수정 후, undo
+# 가장 최근에 실행한 db:migrate를 취소합니다
+npx sequelize db:migrate:undo
+
+#4. 다시 migrate
+# migrations 폴더에 존재하는 migration 파일을 기반으로 테이블을 생성합니다.
+npx sequelize db:migrate
+
+
+2. 테이블에 컬럼 추가하기
+
+(1) 아래 명령어로 비어있는 migration 파일을 생성
+npx sequelize migration:generate --name 이름 
+그러면 아래처럼 새로운 migration 이 생성됨 [nickName.js]
+
+(2) 아래 방식으로 컬럼을 추가 또는 삭제
+"use strict";
+
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.addColumn("users", "password", {
+      type: Sequelize.STRING,
+    });
+  },
+
+  down: async (queryInterface, Sequelize) => {
+    await queryInterface.removeColumn("users", "password");
+  },
+};
+
+(3) 다시 마이그레이션 진행
+npx sequelize db:migrate
+
+(4) 모델 수정
+하지만, models > users.js에는 반영되지 않았으므로 수동으로 수정해줘야 한다.
