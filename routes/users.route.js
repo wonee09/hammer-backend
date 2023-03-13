@@ -8,6 +8,9 @@ const router = express.Router();
 const SECRET_KEY = 'TEST_SECRET_KEY';
 // const authMiddleware = require('../middlewares/auth-middleware');
 
+// temporary..
+// when server downs, token goes away.
+// saving in db or redis would be great.
 let tokenObject = {}; // Refresh Token을 저장할 Object(key : refreshToken / value : userId)
 
 // 회원가입
